@@ -632,14 +632,10 @@ function parseDecode(text) {
   });
   return { severity: o.severity, label: String(o.label || ''), headline: String(o.headline || ''), summary: String(o.summary || ''), hazards: o.hazards, sections: map };
 }
-async function decode(sections, mode) {
-  var key = lsGet(LS.key, '');
-  if (!key) throw claudeError('nokey');
-  var CLAUDE_MODEL = await getModel('sonnet');
-  var p = buildPrompt(sections, mode);
-  var r;
+var THINK_MODE = {};
+async function postClaude(key, body) {
   try {
-    r = await fetch('https://api.anthropic.com/v1/messages', {
+    return await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -647,15 +643,35 @@ async function decode(sections, mode) {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL, max_tokens: 4000, thinking: { type: 'disabled' },
-        system: p.system, messages: [{ role: 'user', content: p.user }]
-      })
+      body: JSON.stringify(body)
     });
   } catch (e) { throw claudeError('network'); }
-  if (r.status === 401) throw claudeError('401');
-  if (r.status === 429 || r.status === 529) throw claudeError('busy', r.status);
-  if (!r.ok) throw claudeError('http', r.status);
+}
+async function decode(sections, mode) {
+  var key = lsGet(LS.key, '');
+  if (!key) throw claudeError('nokey');
+  var CLAUDE_MODEL = await getModel('sonnet');
+  var p = buildPrompt(sections, mode);
+  var body = {
+    model: CLAUDE_MODEL, max_tokens: 4000, thinking: { type: THINK_MODE[CLAUDE_MODEL] || 'disabled' },
+    system: p.system, messages: [{ role: 'user', content: p.user }]
+  };
+  var r = await postClaude(key, body);
+  if (!r.ok) {
+    var detail = '';
+    try { var ej = await r.json(); detail = (ej && ej.error && ej.error.message) || ''; console.warn('Claude error', r.status, ej); } catch (e2) {}
+    if (r.status === 400 && detail.indexOf('between_tools') >= 0 && body.thinking.type !== 'between_tools') {
+      THINK_MODE[CLAUDE_MODEL] = 'between_tools';
+      body.thinking = { type: 'between_tools' };
+      r = await postClaude(key, body);
+      if (!r.ok) { detail = ''; try { ej = await r.json(); detail = (ej && ej.error && ej.error.message) || ''; console.warn('Claude error', r.status, ej); } catch (e3) {} }
+    }
+    if (!r.ok) {
+      if (r.status === 401) throw claudeError('401');
+      if (r.status === 429 || r.status === 529) throw claudeError('busy', r.status);
+      var he = claudeError('http', r.status); he.detail = detail; throw he;
+    }
+  }
   var j;
   try { j = await r.json(); } catch (e) { throw claudeError('malformed'); }
   var blocks = (j && j.content) || [];
@@ -672,7 +688,7 @@ function claudeMessage(e) {
   if (e.kind === 'busy') return 'Claude is busy right now (' + e.extra + '). Wait a moment and decode again.';
   if (e.kind === 'malformed') return 'Claude\'s reply could not be read' + (e.extra === 'max_tokens' ? ' because it ran out of room' : '') + '. Decode again.';
   if (e.kind === 'network') return 'Claude could not be reached. Check your connection and decode again.';
-  if (e.kind === 'http') return 'The Claude request failed (' + e.extra + '). Decode again in a minute.';
+  if (e.kind === 'http') return 'Claude rejected the request (' + e.extra + ')' + (e.detail ? ': ' + e.detail : '.') + (e.extra >= 500 ? ' Decode again in a minute.' : '');
   return 'Decoding failed. Decode again.';
 }
 async function runDecode() {
