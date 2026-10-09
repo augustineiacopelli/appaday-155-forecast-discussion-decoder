@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="apple-touch-icon" href="https://augustineiacopelli.github.io/appaday/icons/155.png">
+<meta name="apple-mobile-web-app-title" content="AFD Decoder">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Forecast Discussion Decoder | AppADay 155</title>
+<meta name="description" content="Decode the latest National Weather Service Area Forecast Discussion into plain English.">
+<meta name="theme-color" content="#0F1B22">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --base:#0F1B22; --panel:#16262E; --panel2:#1C313A; --line:#2A4550;
+  --ink:#E8EEF0; --muted:#9BB0B7; --accent:#1F7A8C; --accent-hi:#5CC6D8;
+  --g1:#3FA7B5; --g2:#4FBF7A; --g3:#E4C140; --g4:#EE8A2E; --g5:#E0455C;
+  --lvl:var(--g1);
+  --sans:'Barlow Semi Condensed',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{min-height:100dvh;background:var(--base);color:var(--ink);font-family:var(--sans);font-size:1.0625rem;line-height:1.5;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+a{color:var(--accent-hi)}
+.wrap{width:100%;max-width:46rem;margin:0 auto;padding:0 1rem}
+
+/* header */
+.top{border-bottom:1px solid var(--line);background:var(--base)}
+.top .wrap{display:flex;align-items:center;gap:.75rem;min-height:4rem}
+.num{font-weight:800;font-size:1rem;background:var(--accent);color:#fff;border-radius:.4rem;padding:.2rem .5rem;letter-spacing:.02em}
+.ttl{flex:1;min-width:0}
+.ttl h1{font-size:1.3rem;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttl a{font-size:.9rem;text-decoration:none}
+.ttl a:hover{text-decoration:underline}
+.icon-btn{width:44px;height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center}
+.icon-btn svg{width:22px;height:22px}
+
+main{flex:1;padding:1rem 0 2rem}
+
+/* office bar */
+.officebar{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center}
+.picker{display:flex;gap:.5rem;min-width:0}
+.filter{width:6.5rem;flex:none;min-height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--panel);padding:0 .7rem}
+.filter::placeholder{color:var(--muted)}
+.office{flex:1;min-width:0;min-height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--panel);padding:0 .6rem;font-weight:600}
+.refresh{width:44px;height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center}
+.refresh svg{width:20px;height:20px}
+.refresh.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;color:var(--muted);font-size:.95rem}
+.age{border-radius:999px;padding:.1rem .65rem;font-weight:600;font-size:.9rem;border:1px solid}
+.age.fresh{color:#7FDCA0;border-color:#2E6B47;background:#123222}
+.age.mid{color:#F0CD6A;border-color:#6E5A1E;background:#2E2610}
+.age.old{color:#F28A98;border-color:#7A2B37;background:#311419}
+
+.notice{margin-top:.75rem;border:1px solid var(--accent);background:#123540;border-radius:.7rem;padding:.6rem .8rem;display:flex;gap:.75rem;align-items:center;justify-content:space-between}
+.notice.err{border-color:#7A2B37;background:#2A1318}
+.notice p{font-size:.98rem}
+.btn{min-height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--panel2);padding:0 1rem;font-weight:600;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.55;cursor:default}
+
+/* modes */
+.modes{margin-top:1rem;display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border:1px solid var(--line);border-radius:.7rem;padding:.25rem;gap:.25rem}
+.modes button{min-height:44px;border:0;background:transparent;border-radius:.5rem;font-weight:600;font-size:.98rem;color:var(--muted);line-height:1.1;padding:0 .2rem}
+.modes button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+/* hero */
+.hero{margin-top:1rem;border-radius:1rem;padding:1.1rem 1.1rem 1.2rem;border:1px solid var(--line);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--lvl) 30%,var(--panel)) 0%,var(--panel) 55%,var(--base) 100%);position:relative;overflow:hidden}
+.hero-office{font-size:1rem;color:var(--muted)}
+.hero-office b{color:var(--ink);font-weight:600}
+.gauge{margin-top:.9rem;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.gauge span{height:14px;background:#24383F}
+.gauge span:first-child{border-radius:7px 0 0 7px}
+.gauge span:last-child{border-radius:0 7px 7px 0}
+.gauge span.on:nth-child(1){background:var(--g1)}
+.gauge span.on:nth-child(2){background:var(--g2)}
+.gauge span.on:nth-child(3){background:var(--g3)}
+.gauge span.on:nth-child(4){background:var(--g4)}
+.gauge span.on:nth-child(5){background:var(--g5)}
+.gauge-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:.45rem;gap:.5rem}
+.level-name{font-size:2.4rem;font-weight:800;line-height:1;color:var(--lvl);letter-spacing:-.01em}
+.level-of{color:var(--muted);font-size:.95rem}
+.headline{margin-top:.9rem;font-size:1.45rem;font-weight:700;line-height:1.2}
+.summary{margin-top:.5rem;font-size:1.08rem;color:#D3DEE1;max-width:62ch}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.9rem}
+.chip{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.25rem .7rem .25rem .5rem;font-size:.92rem;font-weight:600;background:rgba(0,0,0,.28);border:1px solid color-mix(in srgb,var(--lvl) 55%,transparent)}
+.chip svg{width:16px;height:16px;flex:none}
+.hero-actions{margin-top:1rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.status{font-size:.95rem;color:var(--muted)}
+.banner{margin-top:1rem;border-radius:.7rem;padding:.7rem .9rem;background:#3A1820;border:1px solid var(--g5);font-size:.98rem;display:flex;gap:.6rem;align-items:flex-start}
+.banner svg{width:20px;height:20px;flex:none;margin-top:.15rem;color:var(--g5)}
+
+/* cards */
+.cards{margin-top:1.25rem;display:flex;flex-direction:column;gap:.75rem}
+.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--lvl);border-radius:.4rem .8rem .8rem .4rem}
+.card.quiet{border-left-color:var(--line)}
+.card-head{display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem .35rem .9rem;min-height:52px}
+.card-title{flex:1;min-width:0;background:none;border:0;text-align:left;display:flex;align-items:center;gap:.5rem;min-height:44px}
+.card-title h2{font-size:1.15rem;font-weight:700;line-height:1.15}
+.card-title small{display:block;font-size:.88rem;color:var(--muted);font-weight:500}
+.chev{width:20px;height:20px;flex:none;transition:transform .18s}
+.card.closed .chev{transform:rotate(-90deg)}
+.seg{display:flex;background:var(--base);border:1px solid var(--line);border-radius:.55rem;padding:2px;flex:none}
+.seg button{min-height:40px;min-width:44px;border:0;background:none;border-radius:.4rem;padding:0 .55rem;font-size:.88rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--ink)}
+.seg button:disabled{opacity:.4;cursor:default}
+.card-body{padding:0 .9rem 1rem}
+.card.closed .card-body{display:none}
+.raw{font-family:var(--mono);font-size:.84rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#CFDBDE}
+.decoded{font-size:1.08rem;line-height:1.55;white-space:pre-wrap}
+.conf{display:flex;gap:.5rem;align-items:flex-start;margin-top:.75rem;font-size:.92rem;color:var(--muted)}
+.pill{flex:none;border-radius:999px;padding:.05rem .6rem;font-weight:700;font-size:.85rem;border:1px solid}
+.pill.high{color:#7FDCA0;border-color:#2E6B47}
+.pill.medium{color:#F0CD6A;border-color:#6E5A1E}
+.pill.low{color:#F28A98;border-color:#7A2B37}
+.byline{margin-top:.6rem;font-size:.88rem;color:var(--muted)}
+.term{color:var(--accent-hi);text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer;border-radius:3px}
+.term:hover{background:rgba(92,198,216,.12)}
+.empty{text-align:center;color:var(--muted);padding:2.5rem 1rem}
+.empty b{display:block;color:var(--ink);font-size:1.2rem;margin-bottom:.3rem}
+
+/* sheet and modal */
+.overlay{position:fixed;inset:0;background:rgba(3,10,13,.66);display:none;z-index:20}
+.overlay.open{display:flex}
+.sheet-ov{align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:40rem;background:var(--panel2);border:1px solid var(--line);border-bottom:0;border-radius:1rem 1rem 0 0;padding:1rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom));animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(30%);opacity:.4}to{transform:none;opacity:1}}
+.sheet-grip{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto .8rem}
+.sheet h3{font-size:1.5rem;font-weight:800;color:var(--accent-hi)}
+.sheet p{margin-top:.4rem;font-size:1.08rem}
+.sheet .btn{margin-top:1rem;width:100%}
+.modal-ov{align-items:center;justify-content:center;padding:1rem}
+.modal{width:100%;max-width:28rem;background:var(--panel2);border:1px solid var(--line);border-radius:1rem;padding:1.2rem}
+.modal h3{font-size:1.4rem;font-weight:800}
+.modal label{display:block;margin-top:1rem;font-weight:600}
+.modal input{display:block;width:100%;margin-top:.35rem;min-height:44px;border-radius:.6rem;border:1px solid var(--line);background:var(--base);padding:0 .75rem}
+.modal .hint{font-size:.9rem;color:var(--muted);margin-top:.35rem}
+.modal .msg{margin-top:.75rem;font-size:.95rem;color:#F0CD6A}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.25rem;justify-content:flex-end;flex-wrap:wrap}
+
+footer{border-top:1px solid var(--line);padding:1rem 0 calc(1rem + env(safe-area-inset-bottom));color:var(--muted);font-size:.92rem}
+footer p+p{margin-top:.3rem}
+
+@media (max-width:420px){
+  .filter{width:4.6rem}
+  .ttl h1{font-size:1.12rem}
+  .level-name{font-size:2rem}
+  .headline{font-size:1.28rem}
+  .modes button{font-size:.9rem}
+  .card-title h2{font-size:1.05rem}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <span class="num">155</span>
+    <div class="ttl">
+      <h1>Forecast Discussion Decoder</h1>
+      <a href="https://augustineiacopelli.github.io/appaday/">AppADay portfolio</a>
+    </div>
+    <button class="icon-btn" id="gearBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="officebar">
+      <div class="picker">
+        <input class="filter" id="filter" type="search" placeholder="Find" aria-label="Filter forecast offices" autocomplete="off">
+        <select class="office" id="office" aria-label="Forecast office"></select>
+      </div>
+      <button class="refresh" id="refreshBtn" aria-label="Refresh discussion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div id="noticeSlot"></div>
+
+    <div class="modes" id="modes" role="group" aria-label="Decoding voice">
+      <button data-mode="news">News Reporter</button>
+      <button data-mode="plain">Plain Talk</button>
+      <button data-mode="snarky">Snarky</button>
+      <button data-mode="comical">Comical</button>
+    </div>
+
+    <section class="hero" id="hero" aria-live="polite"></section>
+    <div id="bannerSlot"></div>
+    <div class="cards" id="cards"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Data from the National Weather Service at api.weather.gov. Decodes are Claude's reading of the forecaster's words, not an official product. Always follow official NWS watches and warnings.</p>
+    <p><span id="sessionLabel"></span><a href="https://augustineiacopelli.github.io/appaday/">Back to the AppADay portfolio</a></p>
+  </div>
+</footer>
+
+<div class="overlay sheet-ov" id="sheetOv" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTerm">
+    <div class="sheet-grip"></div>
+    <h3 id="sheetTerm"></h3>
+    <p id="sheetDef"></p>
+    <button class="btn" id="sheetClose">Close</button>
+  </div>
+</div>
+
+<div class="overlay modal-ov" id="setOv" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <h3 id="setTitle">Settings</h3>
+    <div class="msg" id="setMsg" hidden></div>
+    <label for="keyIn">Claude API key</label>
+    <input id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+    <p class="hint">Stored only in this browser. The original text and glossary work without a key.</p>
+    <label for="sessIn">Session name</label>
+    <input id="sessIn" type="text" autocomplete="off" placeholder="Optional label for this device">
+    <div class="modal-actions">
+      <button class="btn" id="clearCache">Clear saved discussion</button>
+      <button class="btn" id="setCancel">Cancel</button>
+      <button class="btn primary" id="setSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function getModel(tier = 'sonnet') { try { const r = await fetch('../config.json'); const c = await r.json(); return c.models[tier]; } catch { return 'claude-sonnet-5-5'; } }
+
+var NWS = 'https://api.weather.gov';
+var LS = { office: 'afd155.office', mode: 'afd155.mode', key: 'afd155.key', session: 'afd155.session', cache: 'afd155.cache' };
+
+var WFO = [
+['ICT','Wichita, KS'],['TOP','Topeka, KS'],['DDC','Dodge City, KS'],['GLD','Goodland, KS'],
+['ABQ','Albuquerque, NM'],['ABR','Aberdeen, SD'],['AFC','Anchorage, AK'],['AFG','Fairbanks, AK'],['AJK','Juneau, AK'],
+['AKQ','Wakefield, VA'],['ALY','Albany, NY'],['AMA','Amarillo, TX'],['APX','Gaylord, MI'],['ARX','La Crosse, WI'],
+['BGM','Binghamton, NY'],['BIS','Bismarck, ND'],['BMX','Birmingham, AL'],['BOI','Boise, ID'],['BOU','Denver/Boulder, CO'],
+['BOX','Boston, MA'],['BRO','Brownsville, TX'],['BTV','Burlington, VT'],['BUF','Buffalo, NY'],['BYZ','Billings, MT'],
+['CAE','Columbia, SC'],['CAR','Caribou, ME'],['CHS','Charleston, SC'],['CLE','Cleveland, OH'],['CRP','Corpus Christi, TX'],
+['CTP','State College, PA'],['CYS','Cheyenne, WY'],['DLH','Duluth, MN'],['DMX','Des Moines, IA'],['DTX','Detroit, MI'],
+['DVN','Quad Cities, IA'],['EAX','Kansas City, MO'],['EKA','Eureka, CA'],['EPZ','El Paso, TX'],['EWX','Austin/San Antonio, TX'],
+['FFC','Atlanta, GA'],['FGF','Grand Forks, ND'],['FGZ','Flagstaff, AZ'],['FSD','Sioux Falls, SD'],['FWD','Fort Worth, TX'],
+['GGW','Glasgow, MT'],['GID','Hastings, NE'],['GJT','Grand Junction, CO'],['GRB','Green Bay, WI'],['GRR','Grand Rapids, MI'],
+['GSP','Greenville-Spartanburg, SC'],['GYX','Gray, ME'],['HFO','Honolulu, HI'],['HGX','Houston, TX'],['HNX','Hanford, CA'],
+['HUN','Huntsville, AL'],['ILM','Wilmington, NC'],['ILN','Wilmington, OH'],['ILX','Lincoln, IL'],['IND','Indianapolis, IN'],
+['IWX','Northern Indiana'],['JAN','Jackson, MS'],['JAX','Jacksonville, FL'],['JKL','Jackson, KY'],['KEY','Key West, FL'],
+['LBF','North Platte, NE'],['LCH','Lake Charles, LA'],['LIX','New Orleans, LA'],['LKN','Elko, NV'],['LMK','Louisville, KY'],
+['LOT','Chicago, IL'],['LOX','Los Angeles, CA'],['LSX','St. Louis, MO'],['LUB','Lubbock, TX'],['LWX','Baltimore/Washington'],
+['LZK','Little Rock, AR'],['MAF','Midland/Odessa, TX'],['MEG','Memphis, TN'],['MFL','Miami, FL'],['MFR','Medford, OR'],
+['MHX','Newport/Morehead City, NC'],['MKX','Milwaukee, WI'],['MLB','Melbourne, FL'],['MOB','Mobile, AL'],['MPX','Twin Cities, MN'],
+['MQT','Marquette, MI'],['MRX','Morristown, TN'],['MSO','Missoula, MT'],['MTR','San Francisco Bay Area, CA'],['OAX','Omaha, NE'],
+['OHX','Nashville, TN'],['OKX','New York, NY'],['OTX','Spokane, WA'],['OUN','Norman, OK'],['PAH','Paducah, KY'],
+['PBZ','Pittsburgh, PA'],['PDT','Pendleton, OR'],['PHI','Mount Holly, NJ'],['PIH','Pocatello, ID'],['PQR','Portland, OR'],
+['PSR','Phoenix, AZ'],['PUB','Pueblo, CO'],['RAH','Raleigh, NC'],['REV','Reno, NV'],['RIW','Riverton, WY'],
+['RLX','Charleston, WV'],['RNK','Blacksburg, VA'],['SEW','Seattle, WA'],['SGF','Springfield, MO'],['SGX','San Diego, CA'],
+['SHV','Shreveport, LA'],['SJT','San Angelo, TX'],['SJU','San Juan, PR'],['SLC','Salt Lake City, UT'],['STO','Sacramento, CA'],
+['TAE','Tallahassee, FL'],['TBW','Tampa Bay, FL'],['TFX','Great Falls, MT'],['TSA','Tulsa, OK'],['TWC','Tucson, AZ'],
+['UNR','Rapid City, SD'],['VEF','Las Vegas, NV']
+];
+var WFO_NAME = {}; WFO.forEach(function (w) { WFO_NAME[w[0]] = w[1]; });
+
+var LEVELS = ['Quiet', 'Routine', 'Active', 'Elevated', 'High Impact'];
+var LEVEL_VARS = ['--g1', '--g2', '--g3', '--g4', '--g5'];
+var MODES = {
+  news: { name: 'News Reporter', voice: 'Write like a trusted local TV meteorologist delivering a clear, warm, confident on-air segment.' },
+  plain: { name: 'Plain Talk', voice: 'Write in calm, plain, conversational English with short sentences and no jargon at all, as if explaining to a neighbor.' },
+  snarky: { name: 'Snarky', voice: 'Write with dry, sarcastic wit that roasts the weather itself (never the forecasters, never the reader).' },
+  comical: { name: 'Comical', voice: 'Write playfully, with jokes, puns, and light absurd metaphors, while keeping every fact correct.' }
+};
+
+/* ---------- glossary ---------- */
+var GLOSSARY = {
+  'CAPE': 'Convective Available Potential Energy. How much fuel the air has for rising storms, in J/kg. Under 500 is weak, 1000 to 2500 is moderate, above 3000 is very unstable.',
+  'MLCAPE': 'Mixed-layer CAPE. Storm fuel calculated from the average of the lowest 100 mb of air, a realistic estimate for surface-based storms.',
+  'MUCAPE': 'Most-unstable CAPE. Storm fuel for the most buoyant parcel in the lowest few kilometers, useful for elevated storms at night.',
+  'SBCAPE': 'Surface-based CAPE. Storm fuel for air lifted straight from the ground.',
+  'CIN': 'Convective inhibition. The lid or cap that keeps air from rising. Strong CIN can prevent storms even with plenty of CAPE.',
+  'SRH': 'Storm-relative helicity. How much spin a storm can ingest from the wind profile. Values above 150 to 250 m2/s2 favor rotating storms and tornadoes.',
+  'LLJ': 'Low-level jet. A band of strong winds a few thousand feet up, usually at night, that feeds moisture and storms.',
+  'low level jet': 'A band of strong winds a few thousand feet above the ground, usually at night, that pumps in moisture and can fuel storms.',
+  'PWAT': 'Precipitable water. The total moisture in a column of air, in inches. High values mean heavy rain potential.',
+  'PWATs': 'Precipitable water values. The total moisture in a column of air, in inches. High values mean heavy rain potential.',
+  'QPF': 'Quantitative precipitation forecast. The predicted amount of rain or melted snow, in inches.',
+  'PoP': 'Probability of precipitation. The chance that at least 0.01 inch falls at any given point in the area.',
+  'PoPs': 'Probabilities of precipitation. The chance that at least 0.01 inch falls at any given point.',
+  'POPS': 'Probabilities of precipitation. The chance that at least 0.01 inch falls at any given point.',
+  'CAA': 'Cold air advection. Wind carrying colder air into the area.',
+  'WAA': 'Warm air advection. Wind carrying warmer air into the area, which often helps lift and clouds.',
+  'FROPA': 'Frontal passage. The moment a front moves through a location.',
+  'CWA': 'County warning area. The counties this NWS office is responsible for.',
+  'VFR': 'Visual flight rules. Good flying weather: ceilings above 3000 ft and visibility over 5 miles.',
+  'MVFR': 'Marginal visual flight rules. Ceilings 1000 to 3000 ft or visibility 3 to 5 miles.',
+  'IFR': 'Instrument flight rules. Ceilings 500 to 1000 ft or visibility 1 to 3 miles.',
+  'LIFR': 'Low instrument flight rules. Ceilings below 500 ft or visibility under 1 mile.',
+  'TAF': 'Terminal Aerodrome Forecast. The official airport forecast for pilots.',
+  'TAFS': 'Terminal Aerodrome Forecasts. The official airport forecasts for pilots.',
+  'TAFs': 'Terminal Aerodrome Forecasts. The official airport forecasts for pilots.',
+  'LLWS': 'Low-level wind shear. A sharp change in wind speed or direction near the ground that is hazardous to aircraft.',
+  'TSRA': 'Thunderstorm with rain, in aviation code.',
+  'VCTS': 'Thunderstorms in the vicinity of the airport, in aviation code.',
+  'cigs': 'Ceilings. The height of the lowest broken or overcast cloud layer.',
+  'SPC': 'Storm Prediction Center in Norman, OK. Issues severe weather outlooks and tornado and severe thunderstorm watches.',
+  'WPC': 'Weather Prediction Center. Issues national rainfall, flood, and winter weather outlooks.',
+  'GFS': 'Global Forecast System. The main American global computer model.',
+  'ECMWF': 'European Centre model. A leading global computer model, often called the Euro.',
+  'NAM': 'North American Mesoscale model. A regional American computer model.',
+  'HRRR': 'High-Resolution Rapid Refresh. An hourly-updating storm-scale model good for the next 18 to 48 hours.',
+  'CAMs': 'Convection-allowing models. High-resolution models that can simulate individual thunderstorms.',
+  'NBM': 'National Blend of Models. A statistical blend of many models that seeds the official NWS forecast.',
+  'ensemble': 'A set of model runs with slightly different starting conditions. Their spread shows how uncertain the forecast is.',
+  'dryline': 'A boundary between moist air to the east and very dry desert air to the west. A classic Plains storm trigger.',
+  'shortwave': 'A small ripple in the upper-level flow that brings lift, clouds, and storms as it passes.',
+  'trough': 'An elongated area of low pressure, usually bringing clouds, precipitation, and cooler weather.',
+  'ridge': 'An elongated area of high pressure, usually bringing warm, dry, settled weather.',
+  'cold front': 'The leading edge of a colder air mass. Often triggers a line of storms and a wind shift.',
+  'warm front': 'The leading edge of a warmer air mass, often with clouds and steady rain ahead of it.',
+  'outflow boundary': 'A mini cold front made by rain-cooled air spreading out from earlier storms. New storms often form along it.',
+  'lee cyclogenesis': 'A surface low forming on the downwind side of the Rockies as upper-level energy crosses the mountains.',
+  'cyclogenesis': 'The birth or strengthening of a low pressure system.',
+  'negatively tilted': 'An upper trough leaning from southeast to northwest. A sign of a strengthening system that often brings severe weather.',
+  'zonal flow': 'Upper-level winds blowing mostly west to east, usually meaning fast-moving, less dramatic weather.',
+  'closed low': 'An upper-level low cut off with its own circulation. Often slow-moving and hard to time.',
+  'jet streak': 'A core of especially fast winds within the jet stream that adds lift for storms.',
+  'deep mixing': 'Strong daytime heating that stirs the air up high, bringing gusty winds and dry air down to the ground.',
+  'mixing': 'Daytime heating stirring the lower atmosphere, which can bring stronger winds and drier air to the surface.',
+  'inversion': 'A layer where temperature rises with height, trapping air below it.',
+  'cap': 'A warm layer aloft that acts like a lid on storms. If it breaks, storms can explode.',
+  'lapse rates': 'How fast temperature falls with height. Steep lapse rates mean an unstable atmosphere.',
+  'effective shear': 'Wind shear measured through the part of the atmosphere where storms actually grow. Above 40 kt supports supercells.',
+  'bulk shear': 'The change in wind between the ground and about 6 km up. Above 40 kt supports organized, long-lived storms.',
+  'supercell': 'A thunderstorm with a deep rotating updraft. Responsible for most large hail and strong tornadoes.',
+  'supercells': 'Thunderstorms with deep rotating updrafts. Responsible for most large hail and strong tornadoes.',
+  'QLCS': 'Quasi-linear convective system. A line of storms that mainly brings damaging winds and brief, hard-to-warn tornadoes.',
+  'MCS': 'Mesoscale convective system. A large cluster of storms that can last all night with heavy rain and wind.',
+  'bow echo': 'A bow-shaped line of storms on radar, a strong signal for damaging straight-line winds.',
+  'upscale': 'Individual storms merging into a larger cluster or line.',
+  'discrete': 'Storms that stay separate from one another. Discrete supercells carry the highest tornado risk.',
+  'theta-e': 'Equivalent potential temperature. A measure combining heat and moisture, used to track unstable air.',
+  'dewpoint': 'The temperature at which air becomes saturated. Dewpoints in the 60s and 70s mean muggy, storm-ready air.',
+  'dewpoints': 'The temperatures at which air becomes saturated. Dewpoints in the 60s and 70s mean muggy, storm-ready air.',
+  'RH': 'Relative humidity. How close the air is to saturation. Under 20 to 25 percent raises fire danger.',
+  '850mb': 'About 5000 feet above sea level. Used to track low-level temperature and moisture.',
+  '750mb': 'About 8000 feet above sea level.',
+  '700mb': 'About 10000 feet above sea level. Warm air here often caps storms.',
+  '500mb': 'About 18000 feet above sea level. The level used to track troughs and ridges.',
+  '250mb': 'About 34000 feet above sea level. Where the jet stream lives.',
+  'Marginal Risk': 'SPC risk level 1 of 5. Isolated severe storms possible.',
+  'Slight Risk': 'SPC risk level 2 of 5. Scattered severe storms possible.',
+  'Enhanced Risk': 'SPC risk level 3 of 5. Numerous severe storms possible.',
+  'Moderate Risk': 'SPC risk level 4 of 5. Widespread severe storms likely, some intense.',
+  'High Risk': 'SPC risk level 5 of 5. A severe weather outbreak with intense, long-lived storms expected.',
+  'Red Flag Warning': 'Critical fire weather is occurring or imminent. Any fire can spread rapidly. Avoid outdoor burning.',
+  'Red Flag': 'Shorthand for Red Flag Warning criteria: low humidity plus strong wind that lets fires spread rapidly.',
+  'Fire Weather Watch': 'Critical fire weather is possible in the next day or two.',
+  'Tornado Watch': 'Conditions favor tornadoes in and near the watch area. Be ready to act if a warning is issued.',
+  'Severe Thunderstorm Watch': 'Conditions favor storms with large hail and damaging winds. Be ready to act.',
+  'synoptic': 'Large-scale, the size of weather maps covering several states.',
+  'mesoscale': 'Medium-scale features from a few miles to a couple hundred miles across, like storm clusters and boundaries.',
+  'aloft': 'Up in the atmosphere, above the surface.',
+  'subsidence': 'Sinking air that warms, dries, and suppresses clouds.',
+  'diurnal': 'Following the daily cycle of daytime heating and nighttime cooling.',
+  'advection': 'Wind carrying heat, cold, or moisture from one place to another.',
+  'convergence': 'Air flowing together at the surface, which forces it upward and can trigger storms.',
+  'moisture return': 'South winds bringing humid Gulf of Mexico air back north.',
+  'virga': 'Rain falling from clouds that evaporates before reaching the ground.',
+  'deterministic': 'A single model run, as opposed to an ensemble of many runs.',
+  'Z': 'Zulu time, the same as UTC. Subtract 5 hours for CDT or 6 hours for CST.'
+};
+var GLOSS_LC = {}; Object.keys(GLOSSARY).forEach(function (k) { if (!GLOSS_LC[k.toLowerCase()]) GLOSS_LC[k.toLowerCase()] = k; });
+function isCaseSensitive(k) { return !/\s/.test(k) && /[A-Z]/.test(k); }
+function reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+var GLOSS_RE = (function () {
+  var keys = Object.keys(GLOSSARY).filter(function (k) { return k !== 'Z'; });
+  keys.sort(function (a, b) { return b.length - a.length; });
+  var alts = keys.map(function (k) { return reEsc(k).replace(/ /g, '\\s+'); });
+  return new RegExp('\\b(?:(\\d{2}(?:\\d{2})?Z)|(' + alts.join('|') + '))\\b', 'gi');
+})();
+function lookupTerm(m) {
+  if (/^\d{2}(\d{2})?Z$/.test(m)) return 'Z';
+  var norm = m.replace(/\s+/g, ' ');
+  if (GLOSSARY.hasOwnProperty(norm)) return norm;
+  var k = GLOSS_LC[norm.toLowerCase()];
+  if (!k) return null;
+  if (isCaseSensitive(k) && norm !== k) {
+    var alt = Object.keys(GLOSSARY).filter(function (x) { return x === norm; })[0];
+    return alt || null;
+  }
+  return k;
+}
+function glossarize(escaped) {
+  return escaped.replace(GLOSS_RE, function (m, zulu, term) {
+    var k = zulu ? 'Z' : lookupTerm(term);
+    if (!k) return m;
+    return '<span class="term" role="button" tabindex="0" data-term="' + k + '" data-show="' + m.replace(/"/g, '') + '">' + m + '</span>';
+  });
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+/* ---------- parser ---------- */
+var TITLE_RE = /^\.([A-Z][A-Za-z0-9 \/&,'()+-]*?)(?:\s*\/([^\/\n]*)\/)?\s*\.\.\.(.*)$/;
+function sectionKey(title) {
+  var t = title.toUpperCase();
+  if (/WATCHES\/WARNINGS\/ADVISORIES/.test(t)) return 'WWA';
+  if (/PRELIMINARY POINT TEMPS/.test(t)) return 'TEMPS';
+  return t.replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+function titleCase(title) {
+  var t = title.trim();
+  if (/WATCHES\/WARNINGS\/ADVISORIES/i.test(t)) return 'Watches, warnings, advisories';
+  if (/PRELIMINARY POINT TEMPS/i.test(t)) return 'Preliminary point temps';
+  t = t.toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function parseAFD(text) {
+  var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  var sections = [], cur = null, initials = {}, done = false, seen = {};
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var trimmed = line.trim();
+    if (done) {
+      var im = /^([A-Z][A-Z0-9 \/&,'()+-]*?)\.\.\.\s*(.+)$/i.exec(trimmed);
+      if (im) initials[sectionKey(im[1])] = im[2].trim();
+      continue;
+    }
+    if (trimmed === '$$') { cur = null; done = true; continue; }
+    if (trimmed === '&&') { cur = null; continue; }
+    var m = TITLE_RE.exec(trimmed);
+    if (m && line.charAt(0) === '.') {
+      var key = sectionKey(m[1]);
+      if (seen[key]) { seen[key]++; key = key + '_' + seen[key]; } else { seen[key] = 1; }
+      cur = { key: key, title: titleCase(m[1]), period: (m[2] || '').trim(), raw: '', issued: '', author: '' };
+      if (m[3] && m[3].trim()) cur.raw = m[3].trim() + '\n';
+      sections.push(cur);
+      continue;
+    }
+    if (!cur) continue;
+    if (!cur.issued && !cur.raw.trim() && /^issued at /i.test(trimmed)) { cur.issued = trimmed; continue; }
+    cur.raw += line + '\n';
+  }
+  sections.forEach(function (s) {
+    s.raw = s.raw.replace(/^\n+|\s+$/g, '');
+    var base = s.key.replace(/_\d+$/, '');
+    s.author = initials[base] || '';
+  });
+  if (!sections.length) {
+    var body = String(text || '').trim();
+    if (body) sections.push({ key: 'DISCUSSION', title: 'Discussion', period: '', raw: body, issued: '', author: '' });
+  }
+  return sections;
+}
+
+/* ---------- gravity ---------- */
+function decodableText(sections) {
+  return sections.filter(function (s) { return s.key !== 'TEMPS'; }).map(function (s) { return s.raw; }).join('\n');
+}
+function keywordFloor(text) {
+  var t = String(text || '');
+  if (/tornado emergency|particularly dangerous|\bPDS\b|high risk|moderate risk|strong tornado|violent tornado|tornado warning|flash flood emergency|hurricane warning|blizzard warning|extreme fire|ice storm warning/i.test(t)) return 5;
+  if (/tornado watch|severe thunderstorm (?:watch|warning)|enhanced risk|supercell|red flag warning|winter storm warning|flash flood (?:watch|warning)|flood warning|excessive heat warning|extreme heat warning|high wind warning|tropical storm (?:watch|warning)|hurricane watch|critical fire|large hail|damaging wind/i.test(t)) return 4;
+  if (/advisory|slight risk|fire weather watch|thunderstorm|\bTSRA\b|winter storm watch|freeze warning|very high (?:grassland )?fire|elevated fire|heavy rain|snow/i.test(t)) return 3;
+  if (/shower|rain|drizzle|marginal risk|breezy|gust|fog|frost/i.test(t)) return 2;
+  return 1;
+}
+var HAZ = [
+  { id: 'tornado', label: 'Tornado', re: /tornad/i },
+  { id: 'hail', label: 'Hail', re: /\bhail\b/i },
+  { id: 'wind', label: 'Damaging wind', re: /damaging wind|high wind|wind advisory|gusts? (?:to |near |of |up to )?(?:4\d|[5-9]\d) mph/i },
+  { id: 'storm', label: 'Thunderstorms', re: /thunderstorm|\bTSRA\b|\btstms?\b/i },
+  { id: 'flood', label: 'Flooding', re: /flood|excessive rain/i },
+  { id: 'fire', label: 'Fire weather', re: /red flag|fire weather watch|critical fire|grassland fire|extreme fire|elevated fire/i },
+  { id: 'winter', label: 'Winter weather', re: /winter storm|blizzard|ice storm|freezing rain|heavy snow|winter weather advisory|\bsnow/i },
+  { id: 'heat', label: 'Heat', re: /heat advisory|excessive heat|extreme heat|heat index/i },
+  { id: 'cold', label: 'Freeze or cold', re: /freeze warning|frost advisory|wind chill|hard freeze/i },
+  { id: 'fog', label: 'Dense fog', re: /dense fog|fog advisory/i }
+];
+function hazardsFromText(text) { return HAZ.filter(function (h) { return h.re.test(text); }).map(function (h) { return h.id; }); }
+function hazardFor(str) { for (var i = 0; i < HAZ.length; i++) if (HAZ[i].re.test(str)) return HAZ[i].id; return 'storm'; }
+var ICONS = {
+  tornado: '<path d="M21 4H3"/><path d="M18 8H6"/><path d="M19 12H9"/><path d="M16 16h-6"/><path d="M11 20H9"/>',
+  hail: '<path d="M20 15.5A4.5 4.5 0 0 0 17.5 7h-1.3A7 7 0 1 0 4 13.5"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="20" r="1"/><circle cx="16" cy="18" r="1"/>',
+  wind: '<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>',
+  storm: '<path d="M6 16.3A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 .5 9"/><path d="m13 12-3 5h4l-3 5"/>',
+  flood: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
+  fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3 0 1.4 1.1 2.5 2.5 2.5z"/>',
+  winter: '<path d="M2 12h20"/><path d="M12 2v20"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
+  heat: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/>',
+  cold: '<path d="M14 4v10.5a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+  fog: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 17H7"/><path d="M17 21H9"/>'
+};
+function icon(id) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[id] || ICONS.storm) + '</svg>'; }
+
+/* ---------- storage ---------- */
+function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function loadCache() { try { var c = JSON.parse(localStorage.getItem(LS.cache) || 'null'); return c && c.id ? c : null; } catch (e) { return null; } }
+function saveCache() { if (!S.product) return; try { localStorage.setItem(LS.cache, JSON.stringify(S.product)); } catch (e) {} }
+
+/* ---------- state ---------- */
+var S = {
+  office: lsGet(LS.office, 'ICT'),
+  mode: lsGet(LS.mode, 'news'),
+  product: null,
+  views: {}, closed: {},
+  loading: false, decoding: false,
+  notice: null, decodeError: '', newerId: null
+};
+if (!WFO_NAME[S.office]) S.office = 'ICT';
+if (!MODES[S.mode]) S.mode = 'news';
+
+/* ---------- NWS ---------- */
+function nwsError(kind, extra) { var e = new Error(kind); e.kind = kind; e.extra = extra; return e; }
+async function nwsJson(url) {
+  var r;
+  try { r = await fetch(url); }
+  catch (e) { if (e && e.name === 'TypeError') throw nwsError('unreachable'); throw e; }
+  if (!r.ok) throw nwsError('http', r.status);
+  try { return await r.json(); } catch (e) { throw nwsError('badjson'); }
+}
+async function fetchLatest(office) {
+  var j = await nwsJson(NWS + '/products/types/AFD/locations/' + encodeURIComponent(office));
+  var g = j && j['@graph'];
+  if (!g || !g.length) throw nwsError('empty');
+  return g[0];
+}
+async function fetchProduct(id) {
+  var j = await nwsJson(NWS + '/products/' + encodeURIComponent(id));
+  if (!j || !j.productText) throw nwsError('empty');
+  return j;
+}
+function nwsMessage(e, office) {
+  if (e.kind === 'unreachable') return 'The National Weather Service could not be reached. Check your connection and retry.';
+  if (e.kind === 'empty') return 'No Area Forecast Discussions were found for ' + office + '. Try another office.';
+  if (e.kind === 'http') return 'The National Weather Service returned an error (' + e.extra + '). Retry in a minute.';
+  if (e.kind === 'badjson') return 'The National Weather Service sent a response that could not be read. Retry in a minute.';
+  return 'Loading the discussion failed. Retry in a minute.';
+}
+
+async function load(office, force) {
+  if (S.loading) return;
+  S.loading = true; S.notice = null; S.decodeError = ''; S.newerId = null;
+  var cached = loadCache();
+  if (cached && cached.office === office && (!S.product || S.product.id !== cached.id)) setProduct(cached);
+  else if (!cached || cached.office !== office) { if (!S.product || S.product.office !== office) S.product = null; }
+  render();
+  try {
+    var latest = await fetchLatest(office);
+    if (S.office !== office) return;
+    if (!S.product || S.product.id !== latest.id) {
+      var p = await fetchProduct(latest.id);
+      if (S.office !== office) return;
+      setProduct({
+        office: office, id: p.id, issuanceTime: p.issuanceTime || latest.issuanceTime,
+        raw: p.productText, sections: parseAFD(p.productText), decodes: {}
+      });
+      saveCache();
+    }
+  } catch (e) {
+    if (S.office !== office) return;
+    var msg = nwsMessage(e, office);
+    if (S.product && S.product.office === office) msg += ' Showing the saved discussion from ' + fmtTime(S.product.issuanceTime) + '.';
+    S.notice = { err: true, text: msg, action: 'retry' };
+  } finally {
+    S.loading = false;
+    render();
+  }
+}
+function setProduct(p) {
+  S.product = p; S.views = {}; S.closed = {};
+  var dec = p.decodes && p.decodes[S.mode];
+  p.sections.forEach(function (s, i) {
+    S.views[s.key] = dec ? 'dec' : 'orig';
+    if (i > 2 || s.key === 'TEMPS' || s.key === 'WWA') S.closed[s.key] = true;
+  });
+}
+async function pollNewer() {
+  if (S.loading || !S.product || document.hidden) return;
+  try {
+    var latest = await fetchLatest(S.office);
+    if (S.product && latest.id !== S.product.id && S.product.office === S.office) { S.newerId = latest.id; render(); }
+  } catch (e) {}
+}
+
+/* ---------- Claude ---------- */
+function buildPrompt(sections, mode) {
+  var m = MODES[mode];
+  var sys = [
+    'You decode National Weather Service Area Forecast Discussions (AFDs) for the general public.',
+    'Voice: ' + m.voice,
+    'Safety rule, which overrides the voice: whenever the discussion mentions any hazard (tornadoes, severe storms, hail, damaging wind, flooding, fire weather, winter weather, extreme heat or cold, dense fog), state the hazard, where it applies, its timing, and the forecaster\'s stated uncertainty plainly and accurately. Humor must never minimize, joke about, or blur a threat to life or property. At severity 4 or 5, the headline and summary carry no jokes at all.',
+    'Never invent facts, numbers, places, or times that are not in the discussion. Translate jargon into everyday words. Convert Z times to Central-style local wording only if the discussion gives the local time; otherwise say UTC.',
+    'Severity scale: 1 Quiet (nothing notable), 2 Routine (ordinary rain, wind, or temperature changes), 3 Active (thunderstorms, advisories, elevated fire danger), 4 Elevated (watches, warnings, or organized severe weather possible), 5 High Impact (dangerous, widespread, or life-threatening weather expected).',
+    'Confidence is the forecaster\'s own expressed confidence in that section: high, medium, or low, with a one-sentence confidenceNote explaining what drives it (model disagreement, timing spread, and so on).',
+    'Return ONLY strict JSON, no markdown, no code fences, matching exactly:',
+    '{"severity":1,"label":"Quiet","headline":"under 14 words","summary":"2 to 4 sentences","hazards":["short hazard phrase"],"sections":[{"key":"SECTION_KEY","decoded":"plain-language translation under 130 words","confidence":"high","confidenceNote":"one sentence"}]}',
+    'Include one entry in sections for every section key provided, using the exact key. hazards may be an empty array.'
+  ].join('\n\n');
+  var body = sections.map(function (s) {
+    return '[' + s.key + '] ' + s.title + (s.period ? ' (' + s.period + ')' : '') + '\n' + s.raw;
+  }).join('\n\n');
+  return { system: sys, user: 'Decode this Area Forecast Discussion in the ' + m.name + ' voice.\n\n' + body };
+}
+function claudeError(kind, extra) { var e = new Error(kind); e.kind = kind; e.extra = extra; return e; }
+function parseDecode(text) {
+  var t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  var a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a < 0 || b <= a) throw claudeError('malformed');
+  var o;
+  try { o = JSON.parse(t.slice(a, b + 1)); } catch (e) { throw claudeError('malformed'); }
+  if (!o || typeof o !== 'object' || !Array.isArray(o.sections)) throw claudeError('malformed');
+  var sev = Math.round(Number(o.severity));
+  o.severity = sev >= 1 && sev <= 5 ? sev : 1;
+  o.hazards = Array.isArray(o.hazards) ? o.hazards.filter(function (h) { return typeof h === 'string' && h.trim(); }).slice(0, 8) : [];
+  var map = {};
+  o.sections.forEach(function (s) {
+    if (s && s.key && typeof s.decoded === 'string') {
+      var c = String(s.confidence || '').toLowerCase();
+      map[s.key] = { decoded: s.decoded, confidence: /^(high|medium|low)$/.test(c) ? c : '', confidenceNote: s.confidenceNote ? String(s.confidenceNote) : '' };
+    }
+  });
+  return { severity: o.severity, label: String(o.label || ''), headline: String(o.headline || ''), summary: String(o.summary || ''), hazards: o.hazards, sections: map };
+}
+async function decode(sections, mode) {
+  var key = lsGet(LS.key, '');
+  if (!key) throw claudeError('nokey');
+  var CLAUDE_MODEL = await getModel('sonnet');
+  var p = buildPrompt(sections, mode);
+  var r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL, max_tokens: 4000, thinking: { type: 'disabled' },
+        system: p.system, messages: [{ role: 'user', content: p.user }]
+      })
+    });
+  } catch (e) { throw claudeError('network'); }
+  if (r.status === 401) throw claudeError('401');
+  if (r.status === 429 || r.status === 529) throw claudeError('busy', r.status);
+  if (!r.ok) throw claudeError('http', r.status);
+  var j;
+  try { j = await r.json(); } catch (e) { throw claudeError('malformed'); }
+  var blocks = (j && j.content) || [];
+  var text = blocks.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
+  if (!text.trim()) {
+    console.warn('Empty decode. stop_reason:', j && j.stop_reason, 'block types:', blocks.map(function (b) { return b.type; }));
+    throw claudeError('malformed', j && j.stop_reason);
+  }
+  try { return parseDecode(text); }
+  catch (e) { console.warn('Unparseable decode. stop_reason:', j.stop_reason, 'block types:', blocks.map(function (b) { return b.type; })); throw e; }
+}
+function claudeMessage(e) {
+  if (e.kind === '401') return 'Claude rejected the API key (401). Check the key in Settings.';
+  if (e.kind === 'busy') return 'Claude is busy right now (' + e.extra + '). Wait a moment and decode again.';
+  if (e.kind === 'malformed') return 'Claude\'s reply could not be read' + (e.extra === 'max_tokens' ? ' because it ran out of room' : '') + '. Decode again.';
+  if (e.kind === 'network') return 'Claude could not be reached. Check your connection and decode again.';
+  if (e.kind === 'http') return 'The Claude request failed (' + e.extra + '). Decode again in a minute.';
+  return 'Decoding failed. Decode again.';
+}
+async function runDecode() {
+  var p = S.product;
+  if (!p || S.decoding) return;
+  if (!lsGet(LS.key, '')) { openSettings('Add your Claude API key to decode discussions.'); return; }
+  var mode = S.mode, id = p.id;
+  S.decoding = true; S.decodeError = ''; render();
+  try {
+    var res = await decode(p.sections.filter(function (s) { return s.key !== 'TEMPS'; }), mode);
+    if (S.product && S.product.id === id) {
+      S.product.decodes = S.product.decodes || {};
+      S.product.decodes[mode] = res;
+      saveCache();
+      if (S.mode === mode) S.product.sections.forEach(function (s) { if (res.sections[s.key]) S.views[s.key] = 'dec'; });
+    }
+  } catch (e) {
+    if (e.kind === 'nokey') openSettings('Add your Claude API key to decode discussions.');
+    else S.decodeError = claudeMessage(e);
+  } finally {
+    S.decoding = false; render();
+  }
+}
+
+/* ---------- render ---------- */
+var $ = function (id) { return document.getElementById(id); };
+function fmtTime(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return 'an earlier time';
+  return d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+function ageInfo(iso) {
+  var ms = Date.now() - new Date(iso).getTime();
+  if (isNaN(ms)) return null;
+  var h = ms / 3600000, mins = Math.max(0, Math.round(ms / 60000));
+  var txt = mins < 60 ? mins + 'm ago' : Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm ago';
+  return { cls: h < 6 ? 'fresh' : h < 12 ? 'mid' : 'old', txt: txt };
+}
+function currentDecode() { return S.product && S.product.decodes ? S.product.decodes[S.mode] || null : null; }
+function hasAnyDecode() { return !!(S.product && S.product.decodes && Object.keys(S.product.decodes).length); }
+function levelInfo() {
+  if (!S.product) return { level: 0 };
+  var floor = keywordFloor(decodableText(S.product.sections));
+  var d = currentDecode();
+  return { level: Math.max(floor, d ? d.severity : 0), floor: floor };
+}
+
+function renderOptions() {
+  var q = $('filter').value.trim().toLowerCase();
+  var list = WFO.filter(function (w) { return !q || w[0].toLowerCase().indexOf(q) >= 0 || w[1].toLowerCase().indexOf(q) >= 0; });
+  if (!list.some(function (w) { return w[0] === S.office; })) list.unshift([S.office, WFO_NAME[S.office]]);
+  $('office').innerHTML = list.map(function (w) {
+    return '<option value="' + w[0] + '"' + (w[0] === S.office ? ' selected' : '') + '>' + w[0] + '  ' + esc(w[1]) + '</option>';
+  }).join('');
+}
+function renderMeta() {
+  var p = S.product, html = '';
+  if (p && p.office === S.office) {
+    var a = ageInfo(p.issuanceTime);
+    html = 'Issued ' + esc(fmtTime(p.issuanceTime)) + (a ? ' <span class="age ' + a.cls + '">' + a.txt + '</span>' : '');
+  } else if (S.loading) html = 'Loading the latest discussion...';
+  $('meta').innerHTML = html;
+  $('refreshBtn').classList.toggle('spin', S.loading);
+}
+function renderNotice() {
+  var html = '';
+  if (S.newerId) html = '<div class="notice"><p>A newer discussion is available.</p><button class="btn primary" data-act="newer">Load it</button></div>';
+  if (S.notice) html += '<div class="notice' + (S.notice.err ? ' err' : '') + '"><p>' + esc(S.notice.text) + '</p>' + (S.notice.action === 'retry' ? '<button class="btn" data-act="retry">Retry</button>' : '') + '</div>';
+  $('noticeSlot').innerHTML = html;
+}
+function renderModes() {
+  Array.prototype.forEach.call($('modes').querySelectorAll('button'), function (b) {
+    b.setAttribute('aria-pressed', b.getAttribute('data-mode') === S.mode ? 'true' : 'false');
+  });
+}
+function renderHero() {
+  var hero = $('hero'), p = S.product;
+  if (!p || p.office !== S.office) {
+    hero.style.setProperty('--lvl', 'var(--g1)');
+    hero.innerHTML = '<div class="empty"><b>' + (S.loading ? 'Pulling the latest discussion' : 'No discussion loaded') + '</b>' +
+      (S.loading ? 'Fetching from ' + esc(WFO_NAME[S.office] || S.office) + '.' : 'Pick a forecast office or retry.') + '</div>';
+    $('bannerSlot').innerHTML = '';
+    return;
+  }
+  var L = levelInfo(), lvl = L.level || 1, d = currentDecode();
+  hero.style.setProperty('--lvl', 'var(' + LEVEL_VARS[lvl - 1] + ')');
+  document.body.style.setProperty('--lvl', 'var(' + LEVEL_VARS[lvl - 1] + ')');
+  var segs = '';
+  for (var i = 1; i <= 5; i++) segs += '<span' + (i <= lvl ? ' class="on"' : '') + '></span>';
+  var chips = [], seenChip = {};
+  if (d) d.hazards.forEach(function (h) { var id = hazardFor(h); chips.push('<span class="chip">' + icon(id) + esc(h) + '</span>'); seenChip[id] = 1; });
+  hazardsFromText(decodableText(p.sections)).forEach(function (id) {
+    if (seenChip[id]) return;
+    var h = HAZ.filter(function (x) { return x.id === id; })[0];
+    chips.push('<span class="chip">' + icon(id) + h.label + '</span>');
+  });
+  var mname = MODES[S.mode].name;
+  var action;
+  if (S.decoding) action = '<button class="btn primary" disabled>Decoding</button><span class="status">Writing the ' + mname + ' version...</span>';
+  else if (d) action = '<button class="btn" data-act="decode">Decode again</button><span class="status">' + mname + ' voice</span>';
+  else action = '<button class="btn primary" data-act="decode">Decode in ' + mname + ' voice</button>' + (lsGet(LS.key, '') ? '' : '<span class="status">Needs a Claude key</span>');
+  var gravityNote = d ? '' : '<span class="level-of">From keywords. Decode for a full read.</span>';
+  hero.innerHTML =
+    '<div class="hero-office">Area Forecast Discussion from <b>' + esc(WFO_NAME[p.office] || p.office) + '</b></div>' +
+    '<div class="gauge" role="img" aria-label="Gravity level ' + lvl + ' of 5, ' + LEVELS[lvl - 1] + '">' + segs + '</div>' +
+    '<div class="gauge-row"><span class="level-name">' + LEVELS[lvl - 1] + '</span>' + (gravityNote || '<span class="level-of">Level ' + lvl + ' of 5</span>') + '</div>' +
+    (d ? '<p class="headline">' + esc(d.headline) + '</p><p class="summary">' + glossarize(esc(d.summary)) + '</p>'
+       : '<p class="summary">Read the forecaster\'s original words below with tap-to-define jargon, or decode the whole discussion into plain English.</p>') +
+    (chips.length ? '<div class="chips">' + chips.join('') + '</div>' : '') +
+    '<div class="hero-actions">' + action + '</div>' +
+    (S.decodeError ? '<div class="notice err"><p>' + esc(S.decodeError) + '</p></div>' : '');
+  $('bannerSlot').innerHTML = lvl >= 4
+    ? '<div class="banner" role="note">' + icon('storm').replace('<svg ', '<svg style="color:var(--g5)" ') + '<div>Hazardous weather is in this discussion. Hazard facts, timing, and uncertainty are stated straight in every voice. Follow official NWS watches and warnings.</div></div>'
+    : '';
+}
+function renderCards() {
+  var p = S.product, box = $('cards');
+  if (!p || p.office !== S.office) { box.innerHTML = ''; return; }
+  var d = currentDecode(), lvl = levelInfo().level || 1;
+  box.innerHTML = p.sections.map(function (s) {
+    var isTemps = s.key === 'TEMPS';
+    var ds = d && d.sections[s.key];
+    var view = ds && S.views[s.key] === 'dec' ? 'dec' : 'orig';
+    var closed = !!S.closed[s.key];
+    var seg = isTemps ? '' :
+      '<div class="seg" role="group" aria-label="View">' +
+      '<button data-act="view" data-key="' + s.key + '" data-view="orig" aria-pressed="' + (view === 'orig') + '">Original</button>' +
+      '<button data-act="view" data-key="' + s.key + '" data-view="dec" aria-pressed="' + (view === 'dec') + '"' + (ds ? '' : ' disabled') + '>Decoded</button></div>';
+    var body;
+    if (view === 'dec') {
+      body = '<div class="decoded">' + glossarize(esc(ds.decoded)) + '</div>' +
+        (ds.confidence ? '<div class="conf"><span class="pill ' + ds.confidence + '">' + ds.confidence.charAt(0).toUpperCase() + ds.confidence.slice(1) + ' confidence</span><span>' + esc(ds.confidenceNote) + '</span></div>' : '');
+    } else {
+      body = '<div class="raw">' + glossarize(esc(s.raw || '(empty section)')) + '</div>' +
+        (isTemps ? '<div class="byline">Shown as issued. This numeric table is never decoded.</div>' : '');
+    }
+    var sub = [s.period, s.author ? 'by ' + s.author : ''].filter(Boolean).join(', ');
+    return '<article class="card' + (closed ? ' closed' : '') + (isTemps || s.key === 'WWA' || lvl < 3 ? ' quiet' : '') + '">' +
+      '<div class="card-head"><button class="card-title" data-act="toggle" data-key="' + s.key + '" aria-expanded="' + !closed + '">' +
+      '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+      '<span><h2>' + esc(s.title) + '</h2>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span></button>' + seg + '</div>' +
+      '<div class="card-body">' + body + (s.issued && view === 'orig' ? '<div class="byline">' + esc(s.issued) + '</div>' : '') + '</div></article>';
+  }).join('');
+}
+function render() {
+  renderMeta(); renderNotice(); renderModes(); renderHero(); renderCards();
+  var sess = lsGet(LS.session, '');
+  $('sessionLabel').textContent = sess ? 'Session: ' + sess + '. ' : '';
+}
+
+/* ---------- overlays ---------- */
+var lastFocus = null;
+function openOv(id) { lastFocus = document.activeElement; var o = $(id); o.classList.add('open'); o.setAttribute('aria-hidden', 'false'); }
+function closeOv(id) { var o = $(id); o.classList.remove('open'); o.setAttribute('aria-hidden', 'true'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+function openTerm(k, shown) {
+  $('sheetTerm').textContent = shown || k;
+  $('sheetDef').textContent = GLOSSARY[k] || '';
+  openOv('sheetOv'); $('sheetClose').focus();
+}
+function openSettings(msg) {
+  $('keyIn').value = lsGet(LS.key, '');
+  $('sessIn').value = lsGet(LS.session, '');
+  var m = $('setMsg'); m.hidden = !msg; m.textContent = msg || '';
+  openOv('setOv'); $('keyIn').focus();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('.term');
+  if (t) { openTerm(t.getAttribute('data-term'), t.getAttribute('data-show')); return; }
+  var a = e.target.closest('[data-act]');
+  if (!a) return;
+  var act = a.getAttribute('data-act'), key = a.getAttribute('data-key');
+  if (act === 'toggle') { S.closed[key] = !S.closed[key]; renderCards(); }
+  else if (act === 'view') { S.views[key] = a.getAttribute('data-view'); renderCards(); }
+  else if (act === 'decode') runDecode();
+  else if (act === 'retry') load(S.office, true);
+  else if (act === 'newer') { S.newerId = null; S.product = null; lsDel(LS.cache); load(S.office, true); }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { if ($('sheetOv').classList.contains('open')) closeOv('sheetOv'); if ($('setOv').classList.contains('open')) closeOv('setOv'); }
+  var t = e.target.closest && e.target.closest('.term');
+  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openTerm(t.getAttribute('data-term'), t.getAttribute('data-show')); }
+});
+$('modes').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-mode]'); if (!b) return;
+  var m = b.getAttribute('data-mode'); if (m === S.mode) return;
+  var hadDecode = hasAnyDecode();
+  S.mode = m; lsSet(LS.mode, m); S.decodeError = '';
+  var d = currentDecode();
+  if (S.product) S.product.sections.forEach(function (s) { S.views[s.key] = d && d.sections[s.key] ? 'dec' : 'orig'; });
+  render();
+  if (!d && hadDecode && lsGet(LS.key, '')) runDecode();
+});
+$('office').addEventListener('change', function () {
+  S.office = this.value; lsSet(LS.office, S.office); S.product = null; render(); load(S.office, false);
+});
+$('filter').addEventListener('input', renderOptions);
+$('refreshBtn').addEventListener('click', function () { load(S.office, true); });
+$('gearBtn').addEventListener('click', function () { openSettings(''); });
+$('setCancel').addEventListener('click', function () { closeOv('setOv'); });
+$('setSave').addEventListener('click', function () {
+  var k = $('keyIn').value.trim(), s = $('sessIn').value.trim();
+  if (k) lsSet(LS.key, k); else lsDel(LS.key);
+  if (s) lsSet(LS.session, s); else lsDel(LS.session);
+  closeOv('setOv'); render();
+});
+$('clearCache').addEventListener('click', function () { lsDel(LS.cache); S.product = null; closeOv('setOv'); load(S.office, true); });
+$('sheetClose').addEventListener('click', function () { closeOv('sheetOv'); });
+$('sheetOv').addEventListener('click', function (e) { if (e.target === this) closeOv('sheetOv'); });
+$('setOv').addEventListener('click', function (e) { if (e.target === this) closeOv('setOv'); });
+
+renderOptions();
+render();
+load(S.office, false);
+setInterval(function () { renderMeta(); }, 60000);
+setInterval(pollNewer, 600000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) pollNewer(); });
+</script>
+</body>
+</html>
