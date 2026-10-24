@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="https://augustineiacopelli.github.io/appaday/manifests/155.webmanifest">
 <script src="https://augustineiacopelli.github.io/appaday/save.js" defer></script>
+<script src="https://augustineiacopelli.github.io/appaday/keys.js" data-app="155" data-legacy-key="afd155.key" data-accent="#1F7A8C" defer></script>
 <title>Forecast Discussion Decoder | AppADay 155</title>
 <meta name="description" content="Decode the latest National Weather Service Area Forecast Discussion into plain English.">
 <meta name="theme-color" content="#0F1B22">
@@ -225,9 +226,8 @@ footer p+p{margin-top:.3rem}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <h3 id="setTitle">Settings</h3>
     <div class="msg" id="setMsg" hidden></div>
-    <label for="keyIn">Claude API key</label>
-    <input id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
-    <p class="hint">Stored only in this browser. The original text and glossary work without a key.</p>
+    <div id="keyMount"></div>
+    <p class="hint">The original text and glossary work without a key.</p>
     <label for="sessIn">Session name</label>
     <input id="sessIn" type="text" autocomplete="off" placeholder="Optional label for this device">
     <div class="modal-actions">
@@ -242,7 +242,7 @@ footer p+p{margin-top:.3rem}
 async function getModel(tier = 'sonnet') { try { const r = await fetch('../config.json'); const c = await r.json(); return c.models[tier]; } catch { return 'claude-sonnet-5-5'; } }
 
 var NWS = 'https://api.weather.gov';
-var LS = { office: 'afd155.office', mode: 'afd155.mode', key: 'afd155.key', session: 'afd155.session', cache: 'afd155.cache' };
+var LS = { office: 'afd155.office', mode: 'afd155.mode', session: 'afd155.session', cache: 'afd155.cache' };
 
 var WFO = [
 ['ICT','Wichita, KS'],['TOP','Topeka, KS'],['DDC','Dodge City, KS'],['GLD','Goodland, KS'],
@@ -650,7 +650,7 @@ async function postClaude(key, body) {
   } catch (e) { throw claudeError('network'); }
 }
 async function decode(sections, mode) {
-  var key = lsGet(LS.key, '');
+  var key = window.AppKeys ? await window.AppKeys.get() : null;
   if (!key) throw claudeError('nokey');
   var CLAUDE_MODEL = await getModel('sonnet');
   var p = buildPrompt(sections, mode);
@@ -696,7 +696,7 @@ function claudeMessage(e) {
 async function runDecode() {
   var p = S.product;
   if (!p || S.decoding) return;
-  if (!lsGet(LS.key, '')) { openSettings('Add your Claude API key to decode discussions.'); return; }
+  if (!window.AppKeys || !(await window.AppKeys.get())) { S.decodeError = 'Add your Claude API key to decode discussions.'; render(); return; }
   var mode = S.mode, id = p.id;
   S.decoding = true; S.decodeError = ''; render();
   try {
@@ -791,7 +791,7 @@ function renderHero() {
   var action;
   if (S.decoding) action = '<button class="btn primary" disabled>Decoding</button><span class="status">Writing the ' + mname + ' version...</span>';
   else if (d) action = '<button class="btn" data-act="decode">Decode again</button><span class="status">' + mname + ' voice</span>';
-  else action = '<button class="btn primary" data-act="decode">Decode in ' + mname + ' voice</button>' + (lsGet(LS.key, '') ? '' : '<span class="status">Needs a Claude key</span>');
+  else action = '<button class="btn primary" data-act="decode">Decode in ' + mname + ' voice</button>' + ((window.AppKeys && window.AppKeys.has()) ? '' : '<span class="status">Needs a Claude key</span>');
   var gravityNote = d ? '' : '<span class="level-of">From keywords. Decode for a full read.</span>';
   hero.innerHTML =
     '<div class="hero-office">Area Forecast Discussion from <b>' + esc(WFO_NAME[p.office] || p.office) + '</b></div>' +
@@ -851,10 +851,10 @@ function openTerm(k, shown) {
   openOv('sheetOv'); $('sheetClose').focus();
 }
 function openSettings(msg) {
-  $('keyIn').value = lsGet(LS.key, '');
+  if (window.AppKeys) window.AppKeys.mountSettings($('keyMount'));
   $('sessIn').value = lsGet(LS.session, '');
   var m = $('setMsg'); m.hidden = !msg; m.textContent = msg || '';
-  openOv('setOv'); $('keyIn').focus();
+  openOv('setOv'); $('sessIn').focus();
 }
 
 /* ---------- events ---------- */
@@ -883,7 +883,7 @@ $('modes').addEventListener('click', function (e) {
   var d = currentDecode();
   if (S.product) S.product.sections.forEach(function (s) { S.views[s.key] = d && d.sections[s.key] ? 'dec' : 'orig'; });
   render();
-  if (!d && hadDecode && lsGet(LS.key, '')) runDecode();
+  if (!d && hadDecode && window.AppKeys && window.AppKeys.has()) runDecode();
 });
 $('office').addEventListener('change', function () {
   S.office = this.value; lsSet(LS.office, S.office); S.product = null; render(); load(S.office, false);
@@ -893,8 +893,7 @@ $('refreshBtn').addEventListener('click', function () { load(S.office, true); })
 $('gearBtn').addEventListener('click', function () { openSettings(''); });
 $('setCancel').addEventListener('click', function () { closeOv('setOv'); });
 $('setSave').addEventListener('click', function () {
-  var k = $('keyIn').value.trim(), s = $('sessIn').value.trim();
-  if (k) lsSet(LS.key, k); else lsDel(LS.key);
+  var s = $('sessIn').value.trim();
   if (s) lsSet(LS.session, s); else lsDel(LS.session);
   closeOv('setOv'); render();
 });
@@ -903,6 +902,7 @@ $('sheetClose').addEventListener('click', function () { closeOv('sheetOv'); });
 $('sheetOv').addEventListener('click', function (e) { if (e.target === this) closeOv('sheetOv'); });
 $('setOv').addEventListener('click', function (e) { if (e.target === this) closeOv('setOv'); });
 
+window.addEventListener('appaday:keychange', function () { render(); });
 renderOptions();
 render();
 load(S.office, false);
