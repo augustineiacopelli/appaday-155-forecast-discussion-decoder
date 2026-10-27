@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="https://augustineiacopelli.github.io/appaday/manifests/155.webmanifest">
 <script src="https://augustineiacopelli.github.io/appaday/save.js" defer></script>
+<script src="https://augustineiacopelli.github.io/appaday/models.js"></script>
 <script src="https://augustineiacopelli.github.io/appaday/keys.js" data-app="155" data-legacy-key="afd155.key" data-accent="#1F7A8C" defer></script>
 <title>Forecast Discussion Decoder | AppADay 155</title>
 <meta name="description" content="Decode the latest National Weather Service Area Forecast Discussion into plain English.">
@@ -239,8 +240,7 @@ footer p+p{margin-top:.3rem}
 </div>
 
 <script>
-async function getModel(tier = 'sonnet') { try { const r = await fetch('../config.json'); const c = await r.json(); return c.models[tier]; } catch { return 'claude-sonnet-5-5'; } }
-
+async function getModel(tier) { return window.AppModels ? window.AppModels.get(tier || 'sonnet') : ''; }
 var NWS = 'https://api.weather.gov';
 var LS = { office: 'afd155.office', mode: 'afd155.mode', session: 'afd155.session', cache: 'afd155.cache' };
 
